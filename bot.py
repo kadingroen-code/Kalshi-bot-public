@@ -53,7 +53,7 @@ class KalshiBot:
             
             # Attach your credentials to the config
             config.api_key_id = self.kalshi_key
-            config.private_key = self.kalshi_secret
+            config.private_key_pem = self.kalshi_secret  # FIXED: Use private_key_pem
             
             # Create the client with the configured credentials
             client = KalshiClient(configuration=config)
