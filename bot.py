@@ -20,22 +20,19 @@ class KalshiBot:
     
     def __init__(self):
         """Initialize bot with API credentials and clients"""
-        # 1. Load environment variables (KEEP THIS)
+        # 1. Load environment variables
         self.kalshi_key = os.environ.get('KALSHI_KEY')
         self.kalshi_secret = os.environ.get('KALSHI_SECRET')
         self.supabase_url = os.environ.get('SUPABASE_URL')
         self.supabase_key = os.environ.get('SUPABASE_KEY')
         self.discord_url = os.environ.get('DISCORD_URL')
         
-        # 2. Validate required credentials (KEEP THIS)
+        # 2. Validate required credentials
         self._validate_credentials()
         
         # 3. Initialize clients
         self.supabase: Client = create_client(self.supabase_url, self.supabase_key)
-        
-        # --- THE FIX: Make sure this is named 'self.kalshi_api' ---
         self.kalshi_api = self._init_kalshi_client()
-        # -----------------------------------------------------------
         
         print(f"[{self._timestamp()}] Bot initialized successfully")
     
@@ -53,16 +50,14 @@ class KalshiBot:
             config = Configuration(
                 host="https://demo-api.kalshi.co/trade-api/v2"
             )
-            # --- REPLACE LINES 53-57 WITH THIS ---
             
-            # 1. Attach your keys to the config object
+            # Attach your credentials to the config
             config.api_key_id = self.kalshi_key
             config.private_key = self.kalshi_secret
             
-            # 2. Create the client using ONLY the config
+            # Create the client with the configured credentials
             client = KalshiClient(configuration=config)
             
-            # -------------------------------------
             print(f"[{self._timestamp()}] Kalshi client authenticated")
             return client
         except Exception as e:
@@ -87,7 +82,6 @@ class KalshiBot:
             print(f"[{self._timestamp()}] Scanning Kalshi Portfolio...")
             
             # 1. Get real positions from Kalshi
-            # FIX: Use 'get_positions' and read from 'market_positions'
             response = self.kalshi_api.get_positions()
             portfolio_items = response.market_positions
             
@@ -96,7 +90,7 @@ class KalshiBot:
             for p in portfolio_items:
                 # Calculate how much you have invested (Quantity * Average Price)
                 # Note: Kalshi prices are usually in cents (e.g., 50 = $0.50)
-                # If price is < 100, we assume it's cents.
+                # If price is < 1, we assume it's dollars already
                 
                 price_in_cents = p.avg_price
                 if p.avg_price < 1: # Handle edge case if API returns dollars (e.g. 0.50)
@@ -113,7 +107,8 @@ class KalshiBot:
                         "ticker": p.ticker,
                         "entry_price": p.avg_price,
                         "quantity": p.position,
-                        "status": "OPEN"
+                        "status": "OPEN",
+                        "id": None  # No database ID in auto-pilot mode
                     })
                 else:
                     print(f" -> Ignoring {p.ticker} (Only ${invested_value_dollars:.2f} invested)")
@@ -131,7 +126,7 @@ class KalshiBot:
         """Fetch current yes_bid price from Kalshi API"""
         try:
             # Get market information
-            market = self.kalshi_client.get_market(ticker=ticker)
+            market = self.kalshi_api.get_market(ticker=ticker)
             
             if not market or not hasattr(market, 'market'):
                 print(f"[{self._timestamp()}] WARNING: No market data for {ticker}")
@@ -168,7 +163,7 @@ class KalshiBot:
             print(f"[{self._timestamp()}] Placing sell order: {quantity} contracts of {ticker} at ${price:.2f}")
             
             # Create sell order using Kalshi API
-            order = self.kalshi_client.create_order(
+            order = self.kalshi_api.create_order(
                 ticker=ticker,
                 client_order_id=f"hedge_{ticker}_{int(time.time())}",
                 side="sell",
@@ -194,6 +189,11 @@ class KalshiBot:
     def update_position_status(self, position_id: int, remaining_quantity: int):
         """Update position in Supabase after hedge execution"""
         try:
+            # Skip database update if no position ID (auto-pilot mode)
+            if position_id is None:
+                print(f"[{self._timestamp()}] Skipping database update (auto-pilot mode)")
+                return
+                
             update_data = {
                 'status': 'HEDGED',
                 'quantity': remaining_quantity
@@ -229,7 +229,7 @@ class KalshiBot:
         ticker = position['ticker']
         entry_price = float(position['entry_price'])
         quantity = int(position['quantity'])
-        position_id = position['id']
+        position_id = position.get('id')  # Use get() to handle None safely
         
         print(f"\n[{self._timestamp()}] Processing {ticker}: Entry=${entry_price:.2f}, Qty={quantity}")
         
