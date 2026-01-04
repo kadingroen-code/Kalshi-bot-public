@@ -81,8 +81,9 @@ class KalshiBot:
         try:
             print(f"[{self._timestamp()}] Scanning Kalshi Portfolio...")
             
-            # 1. Get real positions from Kalshi with limit parameter
-            response = self.kalshi_api.get_positions(limit=100)
+            # 1. Get real positions from Kalshi
+            # Use count_filter to only get positions with non-zero position values
+            response = self.kalshi_api.get_positions(limit=100, count_filter="position")
             
             # Access the positions attribute
             portfolio_items = response.positions
