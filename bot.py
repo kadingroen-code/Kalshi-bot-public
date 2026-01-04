@@ -53,7 +53,7 @@ class KalshiBot:
             
             # Attach your credentials to the config
             config.api_key_id = self.kalshi_key
-            config.private_key_pem = self.kalshi_secret  # FIXED: Use private_key_pem
+            config.private_key_pem = self.kalshi_secret
             
             # Create the client with the configured credentials
             client = KalshiClient(configuration=config)
@@ -81,31 +81,14 @@ class KalshiBot:
         try:
             print(f"[{self._timestamp()}] Scanning Kalshi Portfolio...")
             
-            # 1. Get real positions from Kalshi
-            response = self.kalshi_api.get_positions()
+            # 1. Get real positions from Kalshi with limit parameter
+            response = self.kalshi_api.get_positions(limit=100, settlement_status="unsettled")
             
-            # Debug: Print the response structure
-            print(f"[{self._timestamp()}] DEBUG - Response type: {type(response)}")
-            print(f"[{self._timestamp()}] DEBUG - Response attributes: {dir(response)}")
-            print(f"[{self._timestamp()}] DEBUG - Response: {response}")
+            # Access the positions attribute
+            portfolio_items = response.positions
             
-            # Try to access the positions - the attribute name might be different
-            portfolio_items = None
-            if hasattr(response, 'market_positions'):
-                portfolio_items = response.market_positions
-            elif hasattr(response, 'positions'):
-                portfolio_items = response.positions
-            elif hasattr(response, 'data'):
-                portfolio_items = response.data
-            else:
-                # If it's a dict-like object
-                try:
-                    portfolio_items = response.get('market_positions') or response.get('positions')
-                except:
-                    pass
-            
-            if portfolio_items is None:
-                print(f"[{self._timestamp()}] ERROR: Could not find positions in response")
+            if not portfolio_items:
+                print(f"[{self._timestamp()}] No positions found in portfolio")
                 return []
             
             valid_positions = []
