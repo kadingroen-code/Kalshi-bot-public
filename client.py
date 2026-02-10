@@ -1,5 +1,6 @@
 """Async Kalshi API client using httpx with request-level RSA-PSS signing."""
 
+import asyncio
 import base64
 import time
 import uuid
@@ -125,18 +126,37 @@ class KalshiClient:
         headers = self._headers(method, full_path)
         headers["Content-Type"] = "application/json"
         client = await self._get_client()
-        resp = await client.request(
-            method,
-            full_path,
-            headers=headers,
-            params=params,
-            json=json,
-        )
-        if resp.status_code >= 400:
-            raise KalshiAPIError(resp.status_code, resp.content)
-        if resp.status_code == 204 or not resp.content:
-            return {}
-        return resp.json()
+        max_retries = 3
+        last_error: KalshiAPIError | None = None
+        for attempt in range(max_retries):
+            try:
+                resp = await client.request(
+                    method,
+                    full_path,
+                    headers=headers,
+                    params=params,
+                    json=json,
+                )
+                if resp.status_code >= 400:
+                    exc = KalshiAPIError(resp.status_code, resp.content)
+                    if resp.status_code == 429 or resp.status_code >= 500:
+                        last_error = exc
+                        if attempt < max_retries - 1:
+                            delay = 2**attempt
+                            logger.warning("API error, retrying", attempt=attempt + 1, delay=delay, status_code=resp.status_code)
+                            await asyncio.sleep(delay)
+                            headers = self._headers(method, full_path)
+                            headers["Content-Type"] = "application/json"
+                            continue
+                    raise exc
+                if resp.status_code == 204 or not resp.content:
+                    return {}
+                return resp.json()
+            except KalshiAPIError:
+                raise
+        if last_error:
+            raise last_error
+        raise KalshiAPIError(0, "unknown")
 
     async def close(self) -> None:
         if self._client and not self._client.is_closed:
