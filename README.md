@@ -24,8 +24,9 @@ Async Kalshi trading bot with config-driven strategy, safety limits, and optiona
 | `KALSHI_TICKERS` | For fair_value | Comma-separated tickers to trade |
 | `KALSHI_DISCORD_WEBHOOK_URL` | No | Discord webhook for order/error alerts |
 | `KALSHI_SUPABASE_URL`, `KALSHI_SUPABASE_KEY` | No | For risk_neutral: update positions table after hedge |
+| Tuning | No | `KALSHI_HEARTBEAT_INTERVAL_SECONDS`, `KALSHI_LOOP_INTERVAL_SECONDS`, `KALSHI_ORDER_SIZE`, `KALSHI_THRESHOLD_CENTS`, `KALSHI_MIN_INVESTMENT_TO_HEDGE` (see `.env.example`) |
 
-See `.env.example` for all options.
+See `.env.example` for all options. The bot uses Pydantic config (no hardcoded values), loguru for all logging, retries with backoff on API 429/5xx, and SafetyEngine on every order.
 
 ## Legacy bot
 

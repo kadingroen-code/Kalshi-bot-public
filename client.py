@@ -231,7 +231,6 @@ class KalshiClient:
 
     async def get_market_prices_batch(self, tickers: list[str]) -> list[MarketPrice | None]:
         """Fetch market prices for multiple tickers concurrently."""
-        import asyncio
         results = await asyncio.gather(
             *[self.get_market_prices(t) for t in tickers],
             return_exceptions=True,

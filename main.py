@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -55,14 +56,19 @@ async def run_loop_fair_value(
 ) -> None:
     """Fair Value vs Market Price loop: target_tickers, signals Buy/Sell/Hold."""
     loop_interval = config.loop_interval_seconds
+    heartbeat_interval = config.heartbeat_interval_seconds
     order_size = config.order_size
+    last_heartbeat = 0.0
     while True:
-        logger.info(
-            "heartbeat",
-            status="running",
-            strategy="fair_value",
-            ticker_count=len(config.target_tickers),
-        )
+        now = time.monotonic()
+        if now - last_heartbeat >= heartbeat_interval:
+            logger.info(
+                "heartbeat",
+                status="running",
+                strategy="fair_value",
+                ticker_count=len(config.target_tickers),
+            )
+            last_heartbeat = now
         try:
             positions = await client.get_positions()
             current_exposure = compute_exposure_dollars(positions)
@@ -158,13 +164,18 @@ async def run_loop_risk_neutral(
 ) -> None:
     """Risk-neutralization loop: hedge positions when up 50%."""
     loop_interval = config.loop_interval_seconds
+    heartbeat_interval = config.heartbeat_interval_seconds
     min_investment = config.min_investment_to_hedge
+    last_heartbeat = 0.0
     while True:
-        logger.info(
-            "heartbeat",
-            status="running",
-            strategy="risk_neutral",
-        )
+        now = time.monotonic()
+        if now - last_heartbeat >= heartbeat_interval:
+            logger.info(
+                "heartbeat",
+                status="running",
+                strategy="risk_neutral",
+            )
+            last_heartbeat = now
         try:
             positions = await client.get_positions()
             current_exposure = compute_exposure_dollars(positions)
