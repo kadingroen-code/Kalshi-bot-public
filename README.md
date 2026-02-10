@@ -28,6 +28,21 @@ Async Kalshi trading bot with config-driven strategy, safety limits, and optiona
 
 See `.env.example` for all options. The bot uses Pydantic config (no hardcoded values), loguru for all logging, retries with backoff on API 429/5xx, and SafetyEngine on every order.
 
+## GitHub Actions
+
+The workflow (`.github/workflows/main.yml`) runs `main.py` on a schedule and on manual trigger. Set these repository secrets:
+
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `KALSHI_API_KEY_ID` | Yes | Kalshi API key ID |
+| `KALSHI_PRIVATE_KEY_PEM` | Yes | Full PEM string (private key); use a multi-line secret |
+| `KALSHI_MAX_EXPOSURE` | Yes | Max exposure in dollars (e.g. `100`) |
+| `KALSHI_STRATEGY` | Yes | `fair_value` or `risk_neutral` |
+| `KALSHI_TICKERS` | For fair_value | Comma-separated tickers |
+| `KALSHI_BASE_URL` | No | e.g. `https://demo-api.kalshi.co` (default in config) |
+| `KALSHI_DISCORD_WEBHOOK_URL` | No | Discord webhook URL |
+| `KALSHI_SUPABASE_URL`, `KALSHI_SUPABASE_KEY` | No | For risk_neutral position updates |
+
 ## Legacy bot
 
 `bot.py` is the original sync risk-neutralization bot (kalshi-python SDK, Supabase, Discord). Use `main.py` for the async bot with both strategies and safety engine.
